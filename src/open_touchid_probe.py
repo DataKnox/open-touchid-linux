@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Iterable
 
 SCHEMA_VERSION = 1
+VERSION = "0.2.0"
 SENSITIVE_DT_NAMES = {
     "serial-number",
     "system-id",
@@ -230,6 +231,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--sys-root", type=Path, default=Path("/sys"), help=argparse.SUPPRESS)
     parser.add_argument("--config", type=Path, help="Override the kernel config path.")
     parser.add_argument("--compact", action="store_true", help="Emit compact JSON.")
+    parser.add_argument("--version", action="version", version=f"%(prog)s {VERSION}")
     return parser
 
 

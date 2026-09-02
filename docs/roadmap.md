@@ -59,6 +59,8 @@ Exit criterion: enrollment and matching work in a test harness without PAM.
 - [ ] Implement and test the [Omarchy interaction state machine](omarchy-ux.md),
   including enrollment guidance, success/failure motion, reduced-motion mode,
   timeouts, lockout, and password fallback.
+- [ ] Implement the per-user Security → Touch ID panel for multi-finger add,
+  verify, rename, removal, health status, and per-surface enablement.
 - [ ] Define a hardware-backed authorization API for password managers and
   secret stores; applications receive approval, never biometric material.
 - [ ] Evaluate a platform FIDO2/WebAuthn authenticator for passkeys as a
@@ -69,3 +71,20 @@ Exit criterion: enrollment and matching work in a test harness without PAM.
 
 Exit criterion: reviewed end-to-end authentication with documented recovery and
 known limitations.
+
+## Phase 5 — Distribution and safe updates
+
+- [x] Publish a machine-readable CLI version.
+- [ ] Publish signed stable, beta, and nightly release manifests with explicit
+  kernel, broker, protocol, UI, and database compatibility ranges.
+- [ ] Package supported userspace components for Arch/Omarchy; pursue upstream
+  kernel delivery instead of silently replacing distribution kernels.
+- [ ] Add preflight, staged activation, health verification, automatic rollback,
+  and a known-good recovery command.
+- [ ] Preserve opaque SEP enrollment identifiers across compatible migrations;
+  require deliberate re-enrollment when a security boundary changes.
+- [ ] Test upgrades, downgrades, interrupted upgrades, incompatible components,
+  and rollback while the screen is locked.
+
+Exit criterion: an ordinary user can update and recover without disabling
+authentication, losing the password fallback, or being stranded at login.

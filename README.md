@@ -42,11 +42,16 @@ No root access or dependencies are required:
 
 ```bash
 python3 src/open_touchid_probe.py > touchid-report.json
+python3 src/open_touchid_probe.py --version
 ```
 
 The final `assessment.status` is the important line. On current M1 systems,
 `sep-transport-bound-sensor-not-exposed` means your installation is healthy;
 the missing support is in Linux, not a setting you configured incorrectly.
+
+See the [safe update model](docs/update-model.md) for the planned
+package-manager, release-channel, compatibility, migration, and rollback
+contract.
 
 Review the JSON before sharing it. The probe deliberately excludes serial
 numbers, MAC addresses, input events, firmware contents, memory addresses from

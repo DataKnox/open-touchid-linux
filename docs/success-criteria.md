@@ -16,6 +16,8 @@ criterion below.
   FIDO2 platform-authenticator design.
 - Provide polished Omarchy setup and authentication surfaces with finger
   placement guidance, progress, retry, timeout, lockout, and recovery states.
+- Let each local user securely add, verify, name, rename, and remove multiple
+  fingers and independently enable approved system-wide uses.
 
 Touch ID authorizes release of an operation or credential. It must never expose
 the user's saved passwords, biometric template, fingerprint image, or SEP key

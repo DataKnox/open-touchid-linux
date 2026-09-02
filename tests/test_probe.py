@@ -2,10 +2,13 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from src.open_touchid_probe import collect
+from src.open_touchid_probe import VERSION, collect
 
 
 class ProbeTests(unittest.TestCase):
+    def test_version_is_exposed(self):
+        self.assertEqual(VERSION, "0.2.0")
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.root = Path(self.temp.name)

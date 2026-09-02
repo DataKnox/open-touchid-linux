@@ -31,6 +31,48 @@ another, or receive biometric material.
    toggles with plain-language risk descriptions.
 7. **Recovery check** — confirm password fallback before completing setup.
 
+## System Security → Touch ID panel
+
+The settings surface presents Touch ID as a system capability, not a one-time
+installer script.
+
+- Master switch: **Use Touch ID on this account**.
+- Finger list with user-chosen names such as “Right index” and “Left thumb.”
+- Actions for **Add finger**, **Verify**, **Rename**, and **Remove**.
+- Separate switches for session unlock, local login, `sudo`, polkit/admin
+  prompts, password-manager approvals, and passkeys when that surface is ready.
+- Persistent plain-language status for sensor health, SEP availability, last
+  successful verification, lockout, and password fallback.
+
+Adding or removing a finger and changing the master switch requires a fresh
+password confirmation. A user can manage only that user's enrollment namespace;
+administrator status does not grant access to another user's biometric records.
+
+The Linux settings database stores only an opaque SEP enrollment identifier,
+the user-chosen display name, enabled uses, and non-sensitive timestamps. The
+template and sensor pairing material remain inside SEP-controlled storage.
+
+## Finger enrollment animation
+
+The enrollment surface centers a stylized fingerprint made of independently
+addressable ridge segments. It is guidance, not a rendering of the user's real
+fingerprint.
+
+- On `awaiting-touch`, the next neutral ridge segment breathes slowly.
+- On `stage-accepted`, the broker-acknowledged segment fills with the active
+  theme color over 180 ms and remains filled.
+- On `lift-finger`, the glyph moves upward by at most 6 px while a “Lift and
+  reposition” label appears; reduced-motion mode uses opacity only.
+- On `partial`, `too-fast`, or `move-finger`, no progress is added. The relevant
+  edge of the generic glyph is highlighted with concrete text guidance.
+- On completion, the accepted segments form one 240 ms sweep followed by a
+  separate verification step. Completion animation never substitutes for
+  verification.
+
+The illustration must never be generated from, resemble, or encode captured
+fingerprint data. Enrollment stage count and guidance come from the secure
+broker; the UI does not invent progress from time or touch duration.
+
 ## Authentication state machine
 
 | State | Visual behavior | Exit conditions |
