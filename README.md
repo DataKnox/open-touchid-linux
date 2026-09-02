@@ -20,6 +20,8 @@ and shows how to contribute a useful report without uploading private data.
 - A minimal kernel instrumentation patch for printing SEP endpoint
   advertisements that the current stub driver silently discards.
 - A security boundary and staged roadmap for actual driver work.
+- An Omarchy UX specification for enrollment, authentication, recovery, and
+  motion that never outruns the secure result.
 
 The September 2026 baseline is promising but incomplete:
 
@@ -72,6 +74,10 @@ Research boundary          Mesa/SIO + SEP encrypted protocol
 See [the architecture notes](docs/architecture.md), [roadmap](docs/roadmap.md),
 [release success criteria](docs/success-criteria.md), and
 [security policy](SECURITY.md) before experimenting.
+
+The RFC patch has also passed a focused
+[kernel compile validation](docs/build-validation.md). It has not been installed
+or booted yet.
 
 ## Upstream evidence
 

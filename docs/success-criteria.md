@@ -14,6 +14,8 @@ criterion below.
   secret stores can use without learning fingerprints or SEP secrets.
 - Optionally provide passkey/WebAuthn support through a separately reviewed
   FIDO2 platform-authenticator design.
+- Provide polished Omarchy setup and authentication surfaces with finger
+  placement guidance, progress, retry, timeout, lockout, and recovery states.
 
 Touch ID authorizes release of an operation or credential. It must never expose
 the user's saved passwords, biometric template, fingerprint image, or SEP key
@@ -24,6 +26,8 @@ to an application.
 - Matching and templates remain inside the paired Secure Enclave boundary.
 - Every request is bound to the correct user, session, operation, and visible
   prompt; background processes cannot “borrow” an unrelated finger scan.
+- UI animation never predicts or fabricates success. Success motion begins only
+  after a fresh, operation-bound positive result from the privileged broker.
 - Replay, stale-result reuse, confused-deputy attacks, and prompt spoofing are
   covered by the protocol and test suite.
 - Rate limits, lockout, cancellation, timeout, lid-close, suspend, hotplug, and

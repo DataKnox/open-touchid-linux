@@ -9,7 +9,9 @@ reproducible test and a review of the new attack surface.
 - [x] Record a J313/M1 baseline.
 - [x] Identify the exact SEP stub and Mesa tracing code in upstream projects.
 - [x] Prepare a patch that exposes four-byte SEP endpoint advertisements.
-- [ ] Build and boot the instrumentation patch on a disposable test kernel.
+- [x] Compile the instrumentation patch against the inspected Asahi commit and
+  the J313 host kernel configuration.
+- [ ] Boot the instrumentation patch as a separate disposable test kernel.
 - [ ] Compare endpoint inventories across M1, M2, and M3 devices.
 
 Exit criterion: endpoint metadata can be collected without dumping shared
@@ -54,6 +56,9 @@ Exit criterion: enrollment and matching work in a test harness without PAM.
 - [ ] Integrate with `fprintd` only if its API preserves the SEP trust boundary.
 - [ ] Support session unlock, local login after the encrypted system is mounted,
   `sudo`, and polkit/admin authorization with clear UI and cancellation.
+- [ ] Implement and test the [Omarchy interaction state machine](omarchy-ux.md),
+  including enrollment guidance, success/failure motion, reduced-motion mode,
+  timeouts, lockout, and password fallback.
 - [ ] Define a hardware-backed authorization API for password managers and
   secret stores; applications receive approval, never biometric material.
 - [ ] Evaluate a platform FIDO2/WebAuthn authenticator for passkeys as a
