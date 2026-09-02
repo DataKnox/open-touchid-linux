@@ -52,6 +52,12 @@ Exit criterion: enrollment and matching work in a test harness without PAM.
 
 - [ ] Threat-model lock screen, login, polkit, and `sudo` separately.
 - [ ] Integrate with `fprintd` only if its API preserves the SEP trust boundary.
+- [ ] Support session unlock, local login after the encrypted system is mounted,
+  `sudo`, and polkit/admin authorization with clear UI and cancellation.
+- [ ] Define a hardware-backed authorization API for password managers and
+  secret stores; applications receive approval, never biometric material.
+- [ ] Evaluate a platform FIDO2/WebAuthn authenticator for passkeys as a
+  separate reviewed surface rather than treating PAM as browser authentication.
 - [ ] Keep password/recovery fallback and never make first boot depend solely on
   biometrics.
 - [ ] Commission external security review before recommending daily use.

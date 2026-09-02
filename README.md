@@ -6,6 +6,12 @@ Research and bring-up tooling for Apple Silicon Touch ID on Linux.
 > Touch ID authentication does **not** work yet. This project is an evidence-led
 > starting point, not a driver release and not a PAM workaround.
 
+## New to Linux on a Mac?
+
+Start with the [plain-language getting-started guide](docs/getting-started.md).
+It helps you identify your Mac, explains what works today, runs the safe probe,
+and shows how to contribute a useful report without uploading private data.
+
 ## What exists today
 
 - A privacy-safe probe that reports the Apple SEP, mailbox, SART, SPI, SIO, and
@@ -36,6 +42,10 @@ No root access or dependencies are required:
 python3 src/open_touchid_probe.py > touchid-report.json
 ```
 
+The final `assessment.status` is the important line. On current M1 systems,
+`sep-transport-bound-sensor-not-exposed` means your installation is healthy;
+the missing support is in Linux, not a setting you configured incorrectly.
+
 Review the JSON before sharing it. The probe deliberately excludes serial
 numbers, MAC addresses, input events, firmware contents, memory addresses from
 reserved regions, and biometric data.
@@ -60,7 +70,8 @@ Research boundary          Mesa/SIO + SEP encrypted protocol
 ```
 
 See [the architecture notes](docs/architecture.md), [roadmap](docs/roadmap.md),
-and [security policy](SECURITY.md) before experimenting.
+[release success criteria](docs/success-criteria.md), and
+[security policy](SECURITY.md) before experimenting.
 
 ## Upstream evidence
 
