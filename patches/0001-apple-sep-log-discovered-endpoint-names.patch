@@ -1,0 +1,58 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: ELI3GANT <maintainer@users.noreply.github.com>
+Date: Wed, 2 Sep 2026 00:00:00 +0000
+Subject: [RFC PATCH] soc: apple: sep: log discovered endpoint names
+
+The SEP stub already receives service advertisements on endpoint 0xfd but
+discards their four-byte names and assigned endpoint numbers. Log that public
+discovery metadata so bring-up work can identify which services are alive.
+
+This does not inspect shared memory or log request payloads, keys, firmware,
+biometric records, or sensor data.
+
+Based on Asahi Linux kernel commit
+77cb8f24c2381a8abb7272d7bbdec548d6426a8a.
+
+Signed-off-by: ELI3GANT <maintainer@users.noreply.github.com>
+---
+ drivers/soc/apple/sep.rs | 12 ++++++------
+ 1 file changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/drivers/soc/apple/sep.rs b/drivers/soc/apple/sep.rs
+index bcceb7e..6893e83 100644
+--- a/drivers/soc/apple/sep.rs
++++ b/drivers/soc/apple/sep.rs
+@@ -52,8 +52,8 @@ const MSG_SET_SHMEM: u64 = 0x18;
+ 
+ const MSG_TYPE_SHIFT: u32 = 16;
+ const MSG_TYPE_MASK: u64 = 0xFF;
+-//const MSG_PARAM_SHIFT: u32 = 24;
+-//const MSG_PARAM_MASK: u64 = 0xFF;
++const MSG_PARAM_SHIFT: u32 = 24;
++const MSG_PARAM_MASK: u64 = 0xFF;
+ 
+ const MSG_EP_MASK: u64 = 0xFF;
+ const MSG_DATA_SHIFT: u32 = 32;
+@@ -257,16 +257,16 @@ impl SepData {
+     }
+     fn process_discover_msg(&self, msg: Message) {
+         let ty = (msg.msg0 >> MSG_TYPE_SHIFT) & MSG_TYPE_MASK;
+-        //let data = (msg.msg0 >> MSG_DATA_SHIFT) as u32;
+-        //let param = (msg.msg0 >> MSG_PARAM_SHIFT) & MSG_PARAM_MASK;
++        let data = (msg.msg0 >> MSG_DATA_SHIFT) as u32;
++        let param = (msg.msg0 >> MSG_PARAM_SHIFT) & MSG_PARAM_MASK;
+         match ty {
+             MSG_ADVERTISE_EP => {
+-                /*dev_info!(
++                dev_info!(
+                     self.dev,
+                     "Got endpoint {:?} at {}",
+                     core::str::from_utf8(&data.to_be_bytes()),
+                     param
+-                );*/
++                );
+             }
+             _ => {
+                 //dev_warn!(self.dev, "Unknown discovery message type: {}", ty);
+-- 
+2.51.0

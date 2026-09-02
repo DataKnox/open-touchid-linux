@@ -1,0 +1,25 @@
+name: Probe report
+description: Share privacy-safe platform readiness metadata
+title: "probe: "
+labels: [hardware-report]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Run `python3 src/open_touchid_probe.py`, review the JSON locally, and
+        remove anything you do not want public. Never attach biometric data,
+        firmware, keys, templates, or device-unique secrets.
+  - type: textarea
+    id: report
+    attributes:
+      label: Probe JSON
+      render: json
+    validations:
+      required: true
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety check
+      options:
+        - label: I reviewed this report and it contains no private or biometric data.
+          required: true
