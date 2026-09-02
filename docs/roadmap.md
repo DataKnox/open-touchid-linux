@@ -11,7 +11,8 @@ reproducible test and a review of the new attack surface.
 - [x] Prepare a patch that exposes four-byte SEP endpoint advertisements.
 - [x] Compile the instrumentation patch against the inspected Asahi commit and
   the J313 host kernel configuration.
-- [ ] Boot the instrumentation patch as a separate disposable test kernel.
+- [x] Boot the instrumentation patch as a separate disposable test kernel and
+  record the J313 endpoint inventory.
 - [ ] Compare endpoint inventories across M1, M2, and M3 devices.
 
 Exit criterion: endpoint metadata can be collected without dumping shared
@@ -20,6 +21,8 @@ memory, keys, firmware, or biometric payloads.
 ## Phase 1 — Transport description
 
 - [ ] Identify the SIO and Mesa nodes in Apple's device tree through m1n1.
+- [x] Confirm that Asahi's existing `apple-sio` DMA module supports the SIO
+  RTKit endpoint and cyclic DMA but is unbound while J313 SIO is disabled.
 - [ ] Document clocks, power domains, GPIO, interrupts, DART streams, and SPI
   topology for J313 without writing undocumented registers from production
   Linux.

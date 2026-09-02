@@ -56,6 +56,13 @@ On the tested J313, the live kernel has `CONFIG_APPLE_SEP=y` and binds
 `apple_sep` to `242400000.sep`. This proves firmware bring-up reaches the stub;
 it does not prove any biometric service is usable.
 
+The instrumentation patch was subsequently booted as the separately named
+`7.1.9-open-touchid-test1+` kernel. SEP advertised `hibe`, `stac`, `cntl`,
+`xars`, `xarm`, `pnon`, and `hdcp`. None has an obvious biometric or Mesa name.
+That does not establish absence: the relevant function could sit behind a
+non-obvious service, require SIO/sensor initialization first, or be withheld
+from this boot identity.
+
 ## m1n1 research state inspected
 
 Source: m1n1 commit `60e53e7078c5cb7efce32d64bf50829e9401e44f`.
@@ -67,9 +74,19 @@ the power-on sequence and that the key was not found through an older SEP
 tracer.
 
 The Linux device tree presented on the tested machine contains the SEP node and
-a disabled `apple,t8103-sio` node. There is no bound SIO platform device or SIO
-driver and no Mesa child node. Enabling the sensor path will therefore require
-careful platform description and transport work as well as SEP protocol work.
+a disabled `apple,t8103-sio` node. Asahi already ships
+`drivers/dma/apple-sio.c` as `apple-sio.ko`; it boots the SIO RTKit endpoint and
+provides cyclic DMA channels. It is not registered or bound on the live J313
+because the platform node remains disabled. The node also lacks the
+`apple,sio-firmware-params` consumed by that driver and has no Mesa child.
+
+Enabling the fingerprint path therefore means extending and enabling an existing
+SIO foundation, adding the model-specific firmware parameters and Mesa
+description, and implementing the missing biometric client/protocol. It does
+not require rewriting the SIO DMA engine from zero.
+
+The probe's driver `present` field means registered in the running kernel's
+sysfs driver model; `false` does not mean that no loadable module exists.
 
 ## Unknowns to resolve
 

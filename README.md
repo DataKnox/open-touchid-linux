@@ -27,8 +27,9 @@ The September 2026 baseline is promising but incomplete:
 
 - Asahi's kernel has an `apple_sep` driver and the M1 MacBook Air binds it.
 - That driver identifies itself as a **stub driver** and only boots SEP firmware.
-- The Linux device tree describes SIO but leaves it disabled, has no SIO driver,
-  and does not expose the `biosensor,mesa` fingerprint child.
+- The kernel ships an Apple SIO DMA driver, but J313's device-tree node remains
+  disabled and does not expose the `biosensor,mesa` fingerprint child or the
+  required firmware parameters.
 - m1n1's existing Mesa tracer says the command buffer becomes encrypted after
   sensor power-on.
 
@@ -70,7 +71,7 @@ On an M1 MacBook Air running Asahi kernel `7.1.6-1-1-ARCH`:
 ```text
 SEP device tree node       yes
 apple_sep driver bound     yes (242400000.sep)
-SIO device tree node       yes, disabled (no driver)
+SIO device tree node       yes, disabled (driver module exists but is unbound)
 Mesa fingerprint node      no
 Touch ID authentication    no
 Research boundary          Mesa/SIO + SEP encrypted protocol
@@ -80,9 +81,10 @@ See [the architecture notes](docs/architecture.md), [roadmap](docs/roadmap.md),
 [release success criteria](docs/success-criteria.md), and
 [security policy](SECURITY.md) before experimenting.
 
-The RFC patch has also passed a focused
-[kernel compile validation](docs/build-validation.md). It has not been installed
-or booted yet.
+The RFC patch has also passed a focused compile-and-boot
+[kernel validation](docs/build-validation.md). On J313, SEP advertised seven
+services but none had an obvious biometric or Mesa name; this narrows the next
+research step without establishing that the service is absent.
 
 ## Upstream evidence
 

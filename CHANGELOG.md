@@ -6,6 +6,10 @@
 - Added system-wide multi-finger management and enrollment animation behavior
   to the Omarchy UX specification.
 - Compile-validated the SEP instrumentation against the J313 host config.
+- Boot-validated the separately named test kernel and recorded the J313 SEP
+  endpoint inventory without collecting payloads or biometric data.
+- Confirmed and documented Asahi's existing but currently unbound Apple SIO DMA
+  module, narrowing the missing transport work.
 
 ## 0.1.0 — 2026-09-02
 
