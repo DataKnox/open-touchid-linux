@@ -7,7 +7,7 @@ from src.open_touchid_probe import VERSION, collect
 
 class ProbeTests(unittest.TestCase):
     def test_version_is_exposed(self):
-        self.assertEqual(VERSION, "0.2.0")
+        self.assertEqual(VERSION, "0.2.1")
 
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
@@ -36,6 +36,7 @@ class ProbeTests(unittest.TestCase):
         self.config.write_text(
             "CONFIG_APPLE_SEP=y\nCONFIG_APPLE_MAILBOX=y\nCONFIG_APPLE_SART=y\n"
         )
+        self.modules = self.root / "modules"
 
     def tearDown(self):
         self.temp.cleanup()
@@ -45,6 +46,7 @@ class ProbeTests(unittest.TestCase):
             self.proc,
             self.sys,
             self.config,
+            self.modules,
             kernel_release="7.1-test",
             machine="aarch64",
         )
@@ -55,6 +57,9 @@ class ProbeTests(unittest.TestCase):
             "disabled",
         )
         self.assertFalse(report["kernel"]["drivers"]["apple_sio"]["present"])
+        self.assertFalse(
+            report["kernel"]["drivers"]["apple_sio"]["loadable_module_available"]
+        )
         self.assertTrue(report["kernel"]["config"]["CONFIG_APPLE_SEP"])
         self.assertEqual(
             report["assessment"]["status"],
@@ -71,6 +76,7 @@ class ProbeTests(unittest.TestCase):
             self.proc,
             self.sys,
             self.config,
+            self.modules,
             kernel_release="7.1-test",
             machine="aarch64",
         )
@@ -86,11 +92,55 @@ class ProbeTests(unittest.TestCase):
             self.proc,
             self.sys,
             self.config,
+            self.modules,
             kernel_release="7.1-test",
             machine="aarch64",
         )
         rendered = str(report)
         self.assertNotIn("SECRET-SERIAL", rendered)
+
+    def test_unbound_sio_module_is_reported_as_available(self):
+        module = self.modules / "kernel" / "drivers" / "dma" / "apple-sio.ko.zst"
+        module.parent.mkdir(parents=True)
+        module.touch()
+        report = collect(
+            self.proc,
+            self.sys,
+            self.config,
+            self.modules,
+            kernel_release="7.1-test",
+            machine="aarch64",
+        )
+        state = report["kernel"]["drivers"]["apple_sio"]
+        self.assertFalse(state["present"])
+        self.assertEqual(state["bound_devices"], [])
+        self.assertTrue(state["loadable_module_available"])
+
+    def test_fallback_display_warns_about_degraded_performance(self):
+        fallback = (
+            self.sys
+            / "bus"
+            / "platform"
+            / "drivers"
+            / "simple-framebuffer"
+            / "framebuffer0"
+        )
+        fallback.mkdir(parents=True)
+        report = collect(
+            self.proc,
+            self.sys,
+            self.config,
+            self.modules,
+            kernel_release="7.1-test",
+            machine="aarch64",
+        )
+        self.assertEqual(
+            report["assessment"]["warnings"],
+            [
+                "apple-dcp-unbound-display-using-simple-framebuffer; "
+                "expect degraded display performance"
+            ],
+        )
 
 
 if __name__ == "__main__":

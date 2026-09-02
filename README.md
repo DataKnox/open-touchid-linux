@@ -46,7 +46,9 @@ python3 src/open_touchid_probe.py > touchid-report.json
 python3 src/open_touchid_probe.py --version
 ```
 
-The final `assessment.status` is the important line. On current M1 systems,
+The final `assessment.status` is the important line. Driver entries separately
+report whether a driver is registered, which devices it has bound, and whether
+a matching loadable module exists. On current M1 systems,
 `sep-transport-bound-sensor-not-exposed` means your installation is healthy;
 the missing support is in Linux, not a setting you configured incorrectly.
 

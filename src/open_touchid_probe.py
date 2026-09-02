@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Iterable
 
 SCHEMA_VERSION = 1
-VERSION = "0.2.0"
+VERSION = "0.2.1"
 SENSITIVE_DT_NAMES = {
     "serial-number",
     "system-id",
@@ -91,7 +91,20 @@ def dt_inventory(dt_root: Path) -> dict[str, object]:
     }
 
 
-def driver_state(sys_root: Path, driver: str) -> dict[str, object]:
+def loadable_module_available(module_root: Path, module: str) -> bool:
+    try:
+        return any(module_root.rglob(f"{module}.ko*"))
+    except (FileNotFoundError, PermissionError, OSError):
+        return False
+
+
+def driver_state(
+    sys_root: Path,
+    driver: str,
+    *,
+    module_root: Path | None = None,
+    module: str | None = None,
+) -> dict[str, object]:
     root = sys_root / "bus" / "platform" / "drivers" / driver
     present = root.exists()
     ignored = {"bind", "uevent", "unbind", "module", "new_id", "remove_id"}
@@ -101,7 +114,15 @@ def driver_state(sys_root: Path, driver: str) -> dict[str, object]:
             bound = sorted(entry.name for entry in root.iterdir() if entry.name not in ignored)
         except (PermissionError, OSError):
             pass
-    return {"present": present, "bound_devices": bound}
+    return {
+        "present": present,
+        "bound_devices": bound,
+        "loadable_module_available": (
+            loadable_module_available(module_root, module)
+            if module_root is not None and module is not None
+            else False
+        ),
+    }
 
 
 def kernel_config(config_path: Path | None) -> dict[str, bool | None]:
@@ -149,11 +170,13 @@ def collect(
     proc_root: Path = Path("/proc"),
     sys_root: Path = Path("/sys"),
     config_path: Path | None = None,
+    module_root: Path | None = None,
     *,
     kernel_release: str | None = None,
     machine: str | None = None,
 ) -> dict[str, object]:
     release = kernel_release or platform.release()
+    modules = module_root or Path("/usr/lib/modules") / release
     architecture = machine or platform.machine()
     dt_root = proc_root / "device-tree"
     dt = dt_inventory(dt_root)
@@ -161,6 +184,13 @@ def collect(
         sys_root / "devices" / "virtual" / "dmi" / "id" / "product_name"
     )
     sep_driver = driver_state(sys_root, "apple_sep")
+    dcp_driver = driver_state(
+        sys_root,
+        "apple-dcp",
+        module_root=modules,
+        module="appledrm",
+    )
+    simple_framebuffer = driver_state(sys_root, "simple-framebuffer")
     config = kernel_config(config_path or find_config(proc_root, release))
 
     apple_silicon = architecture in {"aarch64", "arm64"} and bool(
@@ -168,6 +198,9 @@ def collect(
     )
     sep_bound = bool(sep_driver["bound_devices"])
     sensor_exposed = bool(dt["mesa_sensor_node"])
+    display_fallback = not bool(dcp_driver["bound_devices"]) and bool(
+        simple_framebuffer["bound_devices"]
+    )
 
     if not apple_silicon:
         status = "not-apple-silicon"
@@ -198,10 +231,17 @@ def collect(
             "config": config,
             "drivers": {
                 "apple_sep": sep_driver,
+                "apple_dcp": dcp_driver,
                 "apple_mailbox": driver_state(sys_root, "apple-mailbox"),
                 "apple_sart": driver_state(sys_root, "apple-sart"),
-                "apple_sio": driver_state(sys_root, "apple-sio"),
+                "apple_sio": driver_state(
+                    sys_root,
+                    "apple-sio",
+                    module_root=modules,
+                    module="apple-sio",
+                ),
                 "apple_spi": driver_state(sys_root, "apple-spi"),
+                "simple_framebuffer": simple_framebuffer,
             },
         },
         "hardware": {
@@ -214,6 +254,14 @@ def collect(
         "assessment": {
             "status": status,
             "touchid_authentication_available": False,
+            "warnings": (
+                [
+                    "apple-dcp-unbound-display-using-simple-framebuffer; "
+                    "expect degraded display performance"
+                ]
+                if display_fallback
+                else []
+            ),
             "next_boundary": (
                 "Mesa/SIO exposure and the SEP-backed encrypted biometric protocol"
                 if apple_silicon and not sensor_exposed

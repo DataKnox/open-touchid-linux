@@ -60,6 +60,17 @@ The privacy-safe probe still reported
 `sep-transport-bound-sensor-not-exposed`: SEP was bound, SIO remained disabled,
 and no Mesa device-tree node was exposed.
 
+Loading the test kernel's `apple_sio` module succeeded, but the driver had zero
+bound devices. This confirms the module itself is usable and the immediate
+blocker is the disabled/incomplete platform description rather than a missing
+kernel object.
+
+The boot also exposed a non-Touch-ID regression: `apple-dcp` failed to probe
+with `-22`, leaving the internal panel on `simple-framebuffer`. This causes
+degraded desktop performance, so this particular test kernel is not suitable
+for daily use. Return to the stock kernel after collecting the endpoint
+inventory. Future probe runs emit a warning for this fallback state.
+
 The endpoint instrumentation produced:
 
 ```text

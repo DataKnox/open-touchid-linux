@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.1 — 2026-09-02
+
+- Fixed misleading SIO diagnostics by distinguishing a loadable kernel module
+  from a registered or device-bound driver.
+- Added regression coverage for an available but unbound `apple-sio` module.
+- Added a runtime warning when a test kernel fails to bind Apple DCP and leaves
+  the display on the slower simple-framebuffer path.
+
 ## 0.2.0 — 2026-09-02
 
 - Added a versioned CLI and a safe long-term update/distribution contract.
