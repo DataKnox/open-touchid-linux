@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Iterable
 
 SCHEMA_VERSION = 1
-VERSION = "0.2.1"
+VERSION = "0.3.0"
 SENSITIVE_DT_NAMES = {
     "serial-number",
     "system-id",
@@ -52,6 +52,7 @@ def dt_inventory(dt_root: Path) -> dict[str, object]:
     nodes: list[str] = []
     compatibles: list[str] = []
     node_status: dict[str, str] = {}
+    node_dirs: dict[str, Path] = {}
 
     for path in iter_paths(dt_root):
         try:
@@ -60,12 +61,17 @@ def dt_inventory(dt_root: Path) -> dict[str, object]:
             continue
         if any(part in SENSITIVE_DT_NAMES for part in relative.parts):
             continue
+        if relative.parts and relative.parts[0] == "reserved-memory":
+            # Reserved-region node names embed physical addresses; only the
+            # boolean handoff check below may look at them.
+            continue
         if path.is_dir():
             lowered = path.name.lower()
             if any(term in lowered for term in ("sep", "mesa", "sio", "spi")):
                 node_name = "/" + relative.as_posix()
                 nodes.append(node_name)
                 node_status[node_name] = read_text(path / "status") or "okay (implicit)"
+                node_dirs[node_name] = path
         elif path.name == "compatible":
             value = read_text(path)
             if value and any(
@@ -79,16 +85,64 @@ def dt_inventory(dt_root: Path) -> dict[str, object]:
     lowered_nodes = [node.lower() for node in node_set]
     lowered_compatibles = [value.lower() for value in compatible_set]
 
+    sep_nodes = [node for node in node_set if "/sep@" in node.lower()]
+    sio_nodes = [node for node in node_set if "/sio@" in node.lower()]
+    sep_dir = node_dirs.get(sep_nodes[0]) if sep_nodes else None
+    sio_dir = node_dirs.get(sio_nodes[0]) if sio_nodes else None
+    platform = read_text(dt_root / "compatible")
+
     return {
         "sep_node": any("/sep@" in node for node in lowered_nodes)
         or "apple,sep" in lowered_compatibles,
+        "sep_status": node_status.get(sep_nodes[0]) if sep_nodes else None,
+        "sep_alias": alias_target(dt_root, "sep") is not None,
+        "sep_firmware_region": bootloader_firmware_handoff(dt_root, sep_dir, "sep-firmware"),
+        "sep_boot_manifests": property_present(sep_dir, "local-policy-manifest")
+        and property_present(sep_dir, "iboot-manifest"),
         "sio_node": any("/sio@" in node for node in lowered_nodes),
+        "sio_status": node_status.get(sio_nodes[0]) if sio_nodes else None,
+        "sio_alias": alias_target(dt_root, "sio") is not None,
+        "sio_firmware_params": property_present(sio_dir, "apple,sio-firmware-params"),
         "mesa_sensor_node": any("mesa" in node for node in lowered_nodes)
         or "biosensor,mesa" in lowered_compatibles,
+        "platform_compatibles": platform.split() if platform else [],
         "relevant_nodes": node_set,
         "node_status": {key: node_status[key] for key in sorted(node_status)},
         "relevant_compatibles": compatible_set,
     }
+
+
+def alias_target(dt_root: Path, alias: str) -> str | None:
+    """Return the node path an /aliases entry points at, without reading the node."""
+    return read_text(dt_root / "aliases" / alias)
+
+
+def property_present(node_dir: Path | None, name: str) -> bool:
+    """Report only whether a property exists; its value is never read."""
+    if node_dir is None:
+        return False
+    try:
+        return (node_dir / name).is_file()
+    except OSError:
+        return False
+
+
+def bootloader_firmware_handoff(dt_root: Path, node_dir: Path | None, region: str) -> bool:
+    """True when the bootloader attached a firmware memory-region to the node.
+
+    m1n1 only creates ``/reserved-memory/<region>@...`` and the node's
+    ``memory-region`` phandle when the board device tree carries the matching
+    alias. Only names are inspected; addresses and contents are not reported.
+    """
+    if property_present(node_dir, "memory-region"):
+        return True
+    try:
+        return any(
+            entry.is_dir() and entry.name.split("@", 1)[0] == region
+            for entry in (dt_root / "reserved-memory").iterdir()
+        )
+    except (FileNotFoundError, NotADirectoryError, PermissionError, OSError):
+        return False
 
 
 def loadable_module_available(module_root: Path, module: str) -> bool:
@@ -197,6 +251,7 @@ def collect(
         model and model.lower().startswith("apple ")
     )
     sep_bound = bool(sep_driver["bound_devices"])
+    sep_disabled = dt["sep_status"] == "disabled"
     sensor_exposed = bool(dt["mesa_sensor_node"])
     display_fallback = not bool(dcp_driver["bound_devices"]) and bool(
         simple_framebuffer["bound_devices"]
@@ -208,10 +263,36 @@ def collect(
         status = "sensor-node-exposed-research-only"
     elif sep_bound:
         status = "sep-transport-bound-sensor-not-exposed"
+    elif dt["sep_node"] and sep_disabled:
+        status = "sep-disabled-in-device-tree"
     elif dt["sep_node"]:
         status = "sep-described-but-driver-unbound"
     else:
         status = "sep-not-described"
+
+    warnings: list[str] = []
+    if display_fallback:
+        warnings.append(
+            "apple-dcp-unbound-display-using-simple-framebuffer; "
+            "expect degraded display performance"
+        )
+    if dt["sep_node"] and not sep_disabled and not sep_bound and not dt["sep_firmware_region"]:
+        warnings.append(
+            "sep-node-enabled-without-firmware-region; the bootloader did not "
+            "attach sepfw, so check that the board device tree has a sep alias"
+        )
+
+    if not apple_silicon:
+        next_boundary = "Confirm the sensor transport without reading biometric payloads"
+    elif sensor_exposed:
+        next_boundary = "Confirm the sensor transport without reading biometric payloads"
+    elif sep_disabled and not sep_bound:
+        next_boundary = (
+            "Board device tree: add the sep alias and enable the SEP node so the "
+            "bootloader passes firmware, then collect the SEP endpoint inventory"
+        )
+    else:
+        next_boundary = "Mesa/SIO exposure and the SEP-backed encrypted biometric protocol"
 
     return {
         "schema_version": SCHEMA_VERSION,
@@ -254,19 +335,8 @@ def collect(
         "assessment": {
             "status": status,
             "touchid_authentication_available": False,
-            "warnings": (
-                [
-                    "apple-dcp-unbound-display-using-simple-framebuffer; "
-                    "expect degraded display performance"
-                ]
-                if display_fallback
-                else []
-            ),
-            "next_boundary": (
-                "Mesa/SIO exposure and the SEP-backed encrypted biometric protocol"
-                if apple_silicon and not sensor_exposed
-                else "Confirm the sensor transport without reading biometric payloads"
-            ),
+            "warnings": warnings,
+            "next_boundary": next_boundary,
         },
     }
 

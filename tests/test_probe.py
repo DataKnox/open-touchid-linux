@@ -7,7 +7,7 @@ from src.open_touchid_probe import VERSION, collect
 
 class ProbeTests(unittest.TestCase):
     def test_version_is_exposed(self):
-        self.assertEqual(VERSION, "0.2.1")
+        self.assertEqual(VERSION, "0.3.0")
 
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
@@ -67,6 +67,104 @@ class ProbeTests(unittest.TestCase):
         )
         self.assertFalse(report["assessment"]["touchid_authentication_available"])
         self.assertFalse(report["privacy"]["contains_biometric_data"])
+        self.assertEqual(report["assessment"]["warnings"], [])
+
+    def _make_m2_j493_layout(self):
+        """Mirror the M2 MacBook Pro 13-inch (J493) as seen on linux-asahi 7.1.6."""
+        dt = self.proc / "device-tree"
+        (dt / "model").write_bytes(b"Apple MacBook Pro (13-inch, M2, 2022)\0")
+        (dt / "compatible").write_bytes(b"apple,j493\0apple,t8112\0apple,arm-platform\0")
+        (dt / "aliases").mkdir()
+        (dt / "aliases" / "touchbar0").write_bytes(b"/soc/spi@23510c000/touchbar@0\0")
+        sep = dt / "soc" / "sep@25e400000"
+        sep.mkdir()
+        (sep / "compatible").write_bytes(b"apple,sep\0")
+        (sep / "status").write_bytes(b"disabled\0")
+        (dt / "soc" / "sio@236400000" / "compatible").write_bytes(
+            b"apple,t8112-sio\0apple,sio\0"
+        )
+        # The M2 driver directory exists but has no bound device.
+        for entry in (self.sys / "bus" / "platform" / "drivers" / "apple_sep").iterdir():
+            entry.rmdir()
+        module = self.modules / "kernel" / "drivers" / "dma" / "apple-sio.ko.zst"
+        module.parent.mkdir(parents=True)
+        module.touch()
+
+    def test_m2_sep_disabled_in_device_tree(self):
+        import shutil
+
+        shutil.rmtree(self.proc / "device-tree" / "soc" / "sep@242400000")
+        self._make_m2_j493_layout()
+        report = collect(
+            self.proc,
+            self.sys,
+            self.config,
+            self.modules,
+            kernel_release="7.1-test",
+            machine="aarch64",
+        )
+        dt = report["hardware"]["device_tree"]
+        self.assertTrue(dt["sep_node"])
+        self.assertEqual(dt["sep_status"], "disabled")
+        self.assertFalse(dt["sep_alias"])
+        self.assertFalse(dt["sep_firmware_region"])
+        self.assertFalse(dt["sep_boot_manifests"])
+        self.assertEqual(dt["sio_status"], "disabled")
+        self.assertFalse(dt["sio_alias"])
+        self.assertFalse(dt["sio_firmware_params"])
+        self.assertEqual(
+            dt["platform_compatibles"], ["apple,j493", "apple,t8112", "apple,arm-platform"]
+        )
+        self.assertTrue(report["kernel"]["drivers"]["apple_sep"]["present"])
+        self.assertEqual(report["kernel"]["drivers"]["apple_sep"]["bound_devices"], [])
+        self.assertTrue(report["kernel"]["drivers"]["apple_sio"]["loadable_module_available"])
+        self.assertEqual(report["assessment"]["status"], "sep-disabled-in-device-tree")
+        self.assertEqual(report["assessment"]["warnings"], [])
+        self.assertIn("sep alias", report["assessment"]["next_boundary"])
+        self.assertFalse(report["assessment"]["touchid_authentication_available"])
+
+    def test_enabled_sep_without_firmware_region_is_unbound_with_warning(self):
+        sep = self.proc / "device-tree" / "soc" / "sep@242400000"
+        (sep / "status").write_bytes(b"okay\0")
+        for entry in (self.sys / "bus" / "platform" / "drivers" / "apple_sep").iterdir():
+            entry.rmdir()
+        report = collect(
+            self.proc,
+            self.sys,
+            self.config,
+            self.modules,
+            kernel_release="7.1-test",
+            machine="aarch64",
+        )
+        self.assertEqual(report["assessment"]["status"], "sep-described-but-driver-unbound")
+        self.assertEqual(len(report["assessment"]["warnings"]), 1)
+        self.assertIn("sep alias", report["assessment"]["warnings"][0])
+
+    def test_bootloader_sep_handoff_is_detected_by_name_only(self):
+        dt = self.proc / "device-tree"
+        sep = dt / "soc" / "sep@242400000"
+        (dt / "aliases").mkdir()
+        (dt / "aliases" / "sep").write_bytes(b"/soc/sep@242400000\0")
+        (dt / "reserved-memory" / "sep-firmware@800000000").mkdir(parents=True)
+        (sep / "memory-region").write_bytes(b"\x00\x00\x00\x2a")
+        (sep / "local-policy-manifest").write_bytes(b"SECRET-LPOL-BLOB")
+        (sep / "iboot-manifest").write_bytes(b"SECRET-IBOT-BLOB")
+        report = collect(
+            self.proc,
+            self.sys,
+            self.config,
+            self.modules,
+            kernel_release="7.1-test",
+            machine="aarch64",
+        )
+        dt_report = report["hardware"]["device_tree"]
+        self.assertTrue(dt_report["sep_alias"])
+        self.assertTrue(dt_report["sep_firmware_region"])
+        self.assertTrue(dt_report["sep_boot_manifests"])
+        rendered = str(report)
+        self.assertNotIn("SECRET-LPOL-BLOB", rendered)
+        self.assertNotIn("SECRET-IBOT-BLOB", rendered)
+        self.assertNotIn("800000000", rendered)
 
     def test_mesa_node_is_detected_but_not_claimed_working(self):
         mesa = self.proc / "device-tree" / "soc" / "spi@1" / "fingerprint@0"
