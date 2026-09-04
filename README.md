@@ -17,6 +17,9 @@ and shows how to contribute a useful report without uploading private data.
 - A privacy-safe probe that reports the Apple SEP, mailbox, SART, SPI, SIO, and
   Mesa exposure visible to a running Linux kernel.
 - A tested M1 MacBook Air (`J313`, `MacBookAir10,1`) baseline.
+- A tested M2 MacBook Pro 13-inch (`J493`, `Mac14,7`) baseline that explains
+  why the SEP stub never binds on t8112 and what device-tree change the
+  endpoint inventory needs there.
 - A minimal kernel instrumentation patch for printing SEP endpoint
   advertisements that the current stub driver silently discards.
 - A security boundary and staged roadmap for actual driver work.
@@ -27,6 +30,9 @@ The September 2026 baseline is promising but incomplete:
 
 - Asahi's kernel has an `apple_sep` driver and the M1 MacBook Air binds it.
 - That driver identifies itself as a **stub driver** and only boots SEP firmware.
+  Asahi added it to unlock the microphone on certain M1 laptops, so only
+  `t8103-j293` and `t8103-j313` carry the `sep` alias that makes m1n1 pass the
+  firmware region; on M2 (`t8112`) the node stays disabled and unbound.
 - The kernel ships an Apple SIO DMA driver, but J313's device-tree node remains
   disabled and does not expose the `biosensor,mesa` fingerprint child or the
   required firmware parameters.
@@ -50,7 +56,14 @@ The final `assessment.status` is the important line. Driver entries separately
 report whether a driver is registered, which devices it has bound, and whether
 a matching loadable module exists. On current M1 systems,
 `sep-transport-bound-sensor-not-exposed` means your installation is healthy;
-the missing support is in Linux, not a setting you configured incorrectly.
+the missing support is in Linux, not a setting you configured incorrectly. On
+current M2 systems, `sep-disabled-in-device-tree` is equally healthy: the board
+device tree does not enable SEP, so nothing on your side is misconfigured.
+
+The report also states whether the board device tree carries the `sep` and
+`sio` aliases and whether the bootloader attached firmware regions to those
+nodes. Only names and presence are reported; manifests, firmware, and
+reserved-region addresses are never read or printed.
 
 See the [safe update model](docs/update-model.md) for the planned
 package-manager, release-channel, compatibility, migration, and rollback
@@ -78,6 +91,23 @@ Mesa fingerprint node      no
 Touch ID authentication    no
 Research boundary          Mesa/SIO + SEP encrypted protocol
 ```
+
+## Current M2 result
+
+On an M2 MacBook Pro 13-inch (`J493`) running Asahi kernel `7.1.6-1-1-ARCH`:
+
+```text
+SEP device tree node       yes, disabled (no sep alias, no firmware region)
+apple_sep driver bound     no (driver registered, zero devices)
+SIO device tree node       yes, disabled (driver module exists but is unbound)
+Mesa fingerprint node      no
+Touch ID authentication    no
+Research boundary          board DT enablement, then Mesa/SIO + SEP protocol
+```
+
+The [M2 baseline](docs/m2-j493-baseline.md) explains the mechanism and ships
+an RFC device-tree patch that adds the alias and enables the node so the
+endpoint inventory can be collected on t8112.
 
 See [the architecture notes](docs/architecture.md), [roadmap](docs/roadmap.md),
 [release success criteria](docs/success-criteria.md), and

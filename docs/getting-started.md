@@ -51,7 +51,8 @@ Common statuses:
 | Status | Meaning |
 |---|---|
 | `sep-transport-bound-sensor-not-exposed` | SEP boot support is present, but Linux cannot reach the fingerprint sensor yet. This is expected on the tested M1 baseline. |
-| `sep-described-but-driver-unbound` | The kernel knows the SEP hardware exists, but its driver did not bind. Compare your kernel and device tree with a supported Asahi release. |
+| `sep-disabled-in-device-tree` | The board device tree describes SEP but leaves it disabled, so the driver cannot bind by design. This is expected on the tested M2 baseline and needs a device-tree change, not a reinstall. |
+| `sep-described-but-driver-unbound` | The SEP node is enabled but its driver did not bind. If the report also warns `sep-node-enabled-without-firmware-region`, the bootloader did not pass firmware because the board device tree lacks a `sep` alias; otherwise compare your kernel and device tree with a supported Asahi release. |
 | `sensor-node-exposed-research-only` | A Mesa-looking node is visible. This is interesting research metadata, not proof that authentication works. |
 | `not-apple-silicon` | The system is outside the current M-series scope. |
 

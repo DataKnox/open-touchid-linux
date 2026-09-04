@@ -1,0 +1,52 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Knox Hutchinson <knox@knoxsdata.com>
+Date: Fri, 4 Sep 2026 12:00:00 -0500
+Subject: [RFC PATCH] arm64: dts: apple: t8112-j493: enable SEP for endpoint
+ discovery
+
+The M2 MacBook Pro 13-inch (J493) inherits status = "disabled" for the
+SEP node from t8112.dtsi and, unlike the M1 laptops t8103-j293 and
+t8103-j313, declares no "sep" alias. m1n1's dt_set_sep() only reserves
+the SEPFW region and attaches the "sepfw" memory-region plus the
+local-policy and iBoot manifests when that alias exists, and the
+apple_sep stub refuses to probe without them. Add the alias and enable
+the node so the stub binds and the endpoint-advertisement logging from
+patch 0001 can record the t8112 inventory.
+
+Test-only: meant for a separately named test kernel on J493, alongside
+a stock kernel booted with initcall_blacklist=__apple_sep_init. Not
+proposed upstream until the SEP boot result on t8112 is recorded.
+
+Based on Asahi Linux tag asahi-7.1.6-1. The touched hunks are identical
+on the asahi branch at 77cb8f24c2381a8abb7272d7bbdec548d6426a8a; only
+the trailer line numbers differ.
+
+Signed-off-by: Knox Hutchinson <knox@knoxsdata.com>
+---
+ arch/arm64/boot/dts/apple/t8112-j493.dts | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/apple/t8112-j493.dts b/arch/arm64/boot/dts/apple/t8112-j493.dts
+index ba237db..dd78bef 100644
+--- a/arch/arm64/boot/dts/apple/t8112-j493.dts
++++ b/arch/arm64/boot/dts/apple/t8112-j493.dts
+@@ -25,6 +25,7 @@
+ 	aliases {
+ 		bluetooth0 = &bluetooth0;
+ 		keyboard = &keyboard;
++		sep = &sep;
+ 		touchbar0 = &touchbar0;
+ 		wifi0 = &wifi0;
+ 	};
+@@ -331,5 +332,9 @@
+ 	status = "okay";
+ };
+ 
++&sep {
++	status = "okay";
++};
++
+ #include "hwmon-fan.dtsi"
+ #include "hwmon-laptop.dtsi"
+-- 
+2.51.0
