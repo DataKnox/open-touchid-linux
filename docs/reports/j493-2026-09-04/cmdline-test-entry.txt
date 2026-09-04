@@ -1,0 +1,1 @@
+BOOT_IMAGE=/vmlinuz-linux-asahi-touchid root=UUID=<redacted> rw rootflags=subvol=@ cryptdevice=UUID=<redacted>:root:allow-discards loglevel=6

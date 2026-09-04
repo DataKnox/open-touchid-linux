@@ -1,0 +1,11 @@
+compatible
+iboot-manifest
+iommus
+local-policy-manifest
+mboxes
+mbox-names
+memory-region
+memory-region-names
+name
+reg
+status

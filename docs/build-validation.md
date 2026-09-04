@@ -116,7 +116,7 @@ normal. `apple_sep` bound to `25e400000.sep` and sent its TZ0 boot request.
 Kernel log lines mentioning the device, in full:
 
 ```text
-OF: reserved mem: 0x0000000804518000..0x0000000804ab7fff (5760 KiB) map non-reusable sep-firmware
+OF: reserved mem: <physical range redacted> (5760 KiB) map non-reusable sep-firmware
 platform 25e400000.sep: Adding to iommu group 5
 ```
 

@@ -1,0 +1,5 @@
+[    9.487408] omarchy-m2 kernel: OF: reserved mem: <physical range redacted> (5760 KiB) map non-reusable sep-firmware
+[    9.489481] omarchy-m2 kernel: platform 25e400000.sep: Adding to iommu group 5
+[    9.499220] omarchy-m2 kernel: apple-dcp 231c00000.dcp: RTKit: syslog message: dpointInterface.cpp:606: [AFK][AFKMailboxSharedMemoryEndpointInterface:#65] if:1 inCmd:0 inResp:0 outRepErr:0 outCmdErr:0 t:436933029
+[    9.499277] omarchy-m2 kernel: apple-dcp 231c00000.dcp: RTKit: syslog message: dpointInterface.cpp:606: [AFK][AFKMailboxSharedMemoryEndpointInterface:#68] if:3 inCmd:0 inResp:0 outRepErr:0 outCmdErr:0 t:436934220
+uptime at capture: up 2 minutes
