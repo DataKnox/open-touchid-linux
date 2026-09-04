@@ -7,7 +7,7 @@ from src.open_touchid_probe import VERSION, collect
 
 class ProbeTests(unittest.TestCase):
     def test_version_is_exposed(self):
-        self.assertEqual(VERSION, "0.3.0")
+        self.assertEqual(VERSION, "0.3.1")
 
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
@@ -27,6 +27,17 @@ class ProbeTests(unittest.TestCase):
             b"disabled\0"
         )
         (self.proc / "bus" / "input").mkdir(parents=True)
+        mbox = self.proc / "device-tree" / "soc" / "mbox@242408000"
+        mbox.mkdir()
+        (mbox / "phandle").write_bytes(b"\x00\x00\x00\x2a")
+        (self.proc / "device-tree" / "soc" / "sep@242400000" / "mboxes").write_bytes(
+            b"\x00\x00\x00\x2a"
+        )
+        (self.proc / "interrupts").write_text(
+            "           CPU0       CPU1\n"
+            " 61:         12          3     AIC2 65815 Level     242408000.mbox-recv\n"
+            " 62:          4          0     AIC2 65812 Level     242408000.mbox-send\n"
+        )
         (self.proc / "bus" / "input" / "devices").write_text(
             'N: Name="Apple SMC power/lid events"\nH: Handlers=kbd event0\n'
         )
@@ -68,6 +79,27 @@ class ProbeTests(unittest.TestCase):
         self.assertFalse(report["assessment"]["touchid_authentication_available"])
         self.assertFalse(report["privacy"]["contains_biometric_data"])
         self.assertEqual(report["assessment"]["warnings"], [])
+        self.assertEqual(report["hardware"]["device_tree"]["sep_mailbox"], "242408000")
+        self.assertEqual(report["kernel"]["sep_mailbox_interrupts"], 19)
+
+    def test_bound_driver_with_silent_mailbox_warns(self):
+        (self.proc / "interrupts").write_text(
+            "           CPU0       CPU1\n"
+            " 61:          0          0     AIC2 65815 Level     242408000.mbox-recv\n"
+            " 62:          0          0     AIC2 65812 Level     242408000.mbox-send\n"
+        )
+        report = collect(
+            self.proc,
+            self.sys,
+            self.config,
+            self.modules,
+            kernel_release="7.1-test",
+            machine="aarch64",
+        )
+        self.assertEqual(report["assessment"]["status"], "sep-transport-bound-sensor-not-exposed")
+        self.assertEqual(report["kernel"]["sep_mailbox_interrupts"], 0)
+        self.assertEqual(len(report["assessment"]["warnings"]), 1)
+        self.assertIn("mailbox-silent", report["assessment"]["warnings"][0])
 
     def _make_m2_j493_layout(self):
         """Mirror the M2 MacBook Pro 13-inch (J493) as seen on linux-asahi 7.1.6."""

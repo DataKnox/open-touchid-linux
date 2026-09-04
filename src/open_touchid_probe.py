@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Iterable
 
 SCHEMA_VERSION = 1
-VERSION = "0.3.0"
+VERSION = "0.3.1"
 SENSITIVE_DT_NAMES = {
     "serial-number",
     "system-id",
@@ -90,6 +90,7 @@ def dt_inventory(dt_root: Path) -> dict[str, object]:
     sep_dir = node_dirs.get(sep_nodes[0]) if sep_nodes else None
     sio_dir = node_dirs.get(sio_nodes[0]) if sio_nodes else None
     platform = read_text(dt_root / "compatible")
+    sep_mailbox = mailbox_unit_address(dt_root, sep_dir)
 
     return {
         "sep_node": any("/sep@" in node for node in lowered_nodes)
@@ -99,6 +100,7 @@ def dt_inventory(dt_root: Path) -> dict[str, object]:
         "sep_firmware_region": bootloader_firmware_handoff(dt_root, sep_dir, "sep-firmware"),
         "sep_boot_manifests": property_present(sep_dir, "local-policy-manifest")
         and property_present(sep_dir, "iboot-manifest"),
+        "sep_mailbox": sep_mailbox,
         "sio_node": any("/sio@" in node for node in lowered_nodes),
         "sio_status": node_status.get(sio_nodes[0]) if sio_nodes else None,
         "sio_alias": alias_target(dt_root, "sio") is not None,
@@ -110,6 +112,54 @@ def dt_inventory(dt_root: Path) -> dict[str, object]:
         "node_status": {key: node_status[key] for key in sorted(node_status)},
         "relevant_compatibles": compatible_set,
     }
+
+
+def mailbox_unit_address(dt_root: Path, node_dir: Path | None) -> str | None:
+    """Resolve the node's first ``mboxes`` phandle to the mailbox unit address.
+
+    Only the unit address (for example ``25e408000``) is returned so the
+    interrupt counters for that mailbox can be looked up in /proc/interrupts.
+    """
+    if node_dir is None:
+        return None
+    phandle = read_bytes(node_dir / "mboxes")
+    if not phandle or len(phandle) < 4:
+        return None
+    wanted = phandle[:4]
+    for candidate in iter_paths(dt_root / "soc"):
+        if candidate.name != "phandle" or read_bytes(candidate) != wanted:
+            continue
+        name = candidate.parent.name
+        if "@" in name:
+            return name.split("@", 1)[1]
+    return None
+
+
+def mailbox_interrupts(proc_root: Path, unit_address: str | None) -> int | None:
+    """Sum the interrupt counters of ``<unit_address>.mbox-*`` lines.
+
+    Zero after a SEP driver has bound means the coprocessor never answered
+    the boot message; the stub driver itself logs nothing in that case.
+    """
+    if unit_address is None:
+        return None
+    text = read_text(proc_root / "interrupts")
+    if text is None:
+        return None
+    lines = text.splitlines()
+    if not lines:
+        return None
+    # The header names one column per CPU; only those columns are counters.
+    # Later columns (chip, hardware IRQ number, trigger, name) are not.
+    cpu_columns = sum(1 for field in lines[0].split() if field.startswith("CPU"))
+    total = None
+    for line in lines[1:]:
+        fields = line.split()
+        if len(fields) < 3 or not fields[-1].startswith(f"{unit_address}.mbox"):
+            continue
+        counts = [int(field) for field in fields[1 : 1 + cpu_columns] if field.isdigit()]
+        total = (total or 0) + sum(counts)
+    return total
 
 
 def alias_target(dt_root: Path, alias: str) -> str | None:
@@ -252,6 +302,7 @@ def collect(
     )
     sep_bound = bool(sep_driver["bound_devices"])
     sep_disabled = dt["sep_status"] == "disabled"
+    sep_irqs = mailbox_interrupts(proc_root, dt["sep_mailbox"])
     sensor_exposed = bool(dt["mesa_sensor_node"])
     display_fallback = not bool(dcp_driver["bound_devices"]) and bool(
         simple_framebuffer["bound_devices"]
@@ -280,6 +331,11 @@ def collect(
         warnings.append(
             "sep-node-enabled-without-firmware-region; the bootloader did not "
             "attach sepfw, so check that the board device tree has a sep alias"
+        )
+    if sep_bound and sep_irqs == 0:
+        warnings.append(
+            "sep-bound-but-mailbox-silent; apple_sep sent its boot message but "
+            "the SEP mailbox has raised no interrupts, so the SEP never answered"
         )
 
     if not apple_silicon:
@@ -310,6 +366,7 @@ def collect(
         },
         "kernel": {
             "config": config,
+            "sep_mailbox_interrupts": sep_irqs,
             "drivers": {
                 "apple_sep": sep_driver,
                 "apple_dcp": dcp_driver,
