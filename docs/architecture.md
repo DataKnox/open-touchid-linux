@@ -97,6 +97,8 @@ those exist in the kernel's static device tree. m1n1 injects them in
 `dt_set_sep()` (`src/kboot.c`, added in commit `62ff43f095`, "kboot: Pass
 through SEPFW and boot object manifests") only when the FDT has a `sep`
 alias; without it m1n1 logs `FDT: sep alias not found in devtree` and skips.
+(The reserved-memory node it creates is named plain `sep-firmware`, with no unit
+address.)
 
 The kernel side follows the same pattern: `t8103.dtsi` and `t8112.dtsi` both
 declare the SEP node with `status = "disabled"`, and a board file must opt in.

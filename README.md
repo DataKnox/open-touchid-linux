@@ -106,8 +106,12 @@ Research boundary          board DT enablement, then Mesa/SIO + SEP protocol
 ```
 
 The [M2 baseline](docs/m2-j493-baseline.md) explains the mechanism and ships
-an RFC device-tree patch that adds the alias and enables the node so the
-endpoint inventory can be collected on t8112.
+an RFC device-tree patch that adds the alias and enables the node. Booted with
+that patch, the M2 comes up cleanly and `apple_sep` binds, but the SEP never
+answers the stub's TZ0 boot request: zero mailbox interrupts and no endpoint
+advertisements ([details](docs/build-validation.md#j493-m2-boot-result)).
+The probe now reports the SEP mailbox interrupt counters so a bound-but-silent
+SEP is visible without a kernel patch.
 
 See [the architecture notes](docs/architecture.md), [roadmap](docs/roadmap.md),
 [release success criteria](docs/success-criteria.md), and

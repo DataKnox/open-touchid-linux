@@ -90,3 +90,54 @@ sensor/SIO initialization that Linux has not performed.
 
 Only the four-byte endpoint advertisement and endpoint number were collected;
 shared memory and message payloads remained out of scope.
+
+## J493 (M2) boot result
+
+Date: 2026-09-04. Host: Apple MacBook Pro (13-inch, M2, 2022), `apple,j493` /
+`apple,t8112`, Omarchy 4.0.2 on Asahi Alarm, m1n1 v1.6.1, U-Boot 2026.04, GRUB.
+
+| Item | Value |
+|---|---|
+| Build host kernel | `7.1.6-1-1-ARCH` (linux-asahi 7.1.6.asahi1-1) |
+| Test kernel | `7.1.6-1-1-touchid` |
+| Source | tag `asahi-7.1.6-1`, stock config, `CONFIG_DEBUG_INFO_BTF` off |
+| Patches | 0001 (endpoint logging) + 0002 (J493 sep alias and enable) |
+| Toolchain | GCC 16.1.1, rustc 1.93.1, bindgen 0.72.1 (Asahi Alarm PKGBUILD flow, `makepkg`) |
+| Boot chain change | patched `t8112-j493.dtb` embedded in the m1n1 image via `/etc/default/update-m1n1`; stock entry booted with `initcall_blacklist=__apple_sep_init` |
+
+Verified before the test boot, on the stock kernel with the driver blacklisted:
+the SEP node reported `okay`, m1n1 attached `memory-region` plus
+`local-policy-manifest` and `iboot-manifest`, `/reserved-memory/sep-firmware`
+existed, and `apple_sep` was absent from the driver list. Only one device tree
+differed from the installed set (`t8112-j493.dtb`, the alias and the status).
+
+Test boot: clean, `apple-dcp` bound, no simple-framebuffer fallback, desktop
+normal. `apple_sep` bound to `25e400000.sep` and sent its TZ0 boot request.
+Kernel log lines mentioning the device, in full:
+
+```text
+OF: reserved mem: 0x0000000804518000..0x0000000804ab7fff (5760 KiB) map non-reusable sep-firmware
+platform 25e400000.sep: Adding to iommu group 5
+```
+
+No `Got endpoint` line, no `Unable to load firmware`, no `Unknown boot message`
+appeared. The SEP mailbox interrupt counters after more than 75 seconds:
+
+```text
+ 61:          0          0          0          0          0          0          0          0     AIC2 65815 Level     25e408000.mbox-recv
+ 62:          0          0          0          0          0          0          0          0     AIC2 65812 Level     25e408000.mbox-send
+```
+
+Zero on both `mbox-recv` and `mbox-send`: the SEP never acknowledged TZ0, so
+the stub never loaded the firmware or reached endpoint discovery. The probe on
+that boot reported `sep-transport-bound-sensor-not-exposed` with
+`sep_alias`, `sep_firmware_region`, and `sep_boot_manifests` all true, which
+is why 0.3.1 adds `sep_mailbox_interrupts` and the `sep-bound-but-mailbox-silent`
+warning: "bound" and "answered" are different facts.
+
+Ruled out: SEP power domain (always-on on both SoCs), mailbox driver (shared
+with DCP and NVMe on t8112), device-tree handoff, and toolchain drift. Not yet
+ruled out: a t8112-specific SEP boot protocol, or iBoot having already done the
+TZ0 step so the request is ignored. The next evidence is an m1n1 hypervisor
+trace of macOS booting SEP on J493. Details in the
+[M2 baseline](m2-j493-baseline.md#boot-result-with-patches-0001--0002-2026-09-04).

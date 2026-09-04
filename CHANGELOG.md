@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.1 — 2026-09-04
+
+- Reported the SEP mailbox unit address and its `/proc/interrupts` counters as
+  `sep_mailbox_interrupts`, and added the `sep-bound-but-mailbox-silent`
+  warning when `apple_sep` is bound but the mailbox has never interrupted.
+- Recorded the J493 (M2) test-kernel boot: clean boot with SEP enabled, m1n1
+  handoff complete, driver bound, SEP silent (no TZ0 acknowledgement, no
+  endpoints).
+- Corrected the reserved-memory node name to plain `sep-firmware`.
+
 ## 0.3.0 — 2026-09-04
 
 - Added the `sep-disabled-in-device-tree` status so M2 owners are not told to

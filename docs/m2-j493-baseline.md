@@ -218,7 +218,7 @@ Observation, from the Asahi kernel and m1n1 sources at the versions above:
    "kboot: Pass through SEPFW and boot object manifests") starts with
    `fdt_get_alias(dt, "sep")`. Without the alias it prints
    `FDT: sep alias not found in devtree` and returns. With it, it reserves
-   the ADT `SEPFW` range as `/reserved-memory/sep-firmware@...`
+   the ADT `SEPFW` range as `/reserved-memory/sep-firmware`
    (`apple,asc-mem`), adds a `memory-region` named `sepfw` to the node, and
    copies the ADT `lpol` and `ibot` manifests into `local-policy-manifest`
    and `iboot-manifest` properties. m1n1 v1.6.1 contains this code.
@@ -304,7 +304,7 @@ sensors, or enrollment storage):
    then `update-m1n1`. It keeps the previous image as `boot.bin.old`.
 5. Reboot into the stock entry first. Confirm the machine boots normally,
    that `/proc/device-tree/soc/sep@25e400000/status` now reads `okay`, that
-   `/proc/device-tree/reserved-memory` contains a `sep-firmware@` node, and
+   `/proc/device-tree/reserved-memory` contains a `sep-firmware` node, and
    that `apple_sep` stayed unbound because of the blacklist.
 6. Reboot into the test entry. Collect only
    `dmesg | grep -E 'apple_sep|sep@|Got endpoint'` and the probe JSON.
@@ -317,10 +317,42 @@ If Linux stops booting after step 4, the recovery path is restoring
 reflashing m1n1 through the m1n1 proxy over USB. Do not run this on a machine
 without one of those paths.
 
+## Boot result with patches 0001 + 0002 (2026-09-04)
+
+Test kernel `7.1.6-1-1-touchid` built from tag `asahi-7.1.6-1` with the stock
+Asahi Alarm config (BTF off) plus both patches, installed alongside the stock
+kernel and booted from a separate GRUB entry after the patched `t8112-j493.dtb`
+was embedded in the m1n1 image. The stock entry ran with
+`initcall_blacklist=__apple_sep_init` throughout. Every step of the plan above
+was followed; see [build-validation.md](build-validation.md#j493-m2-boot-result)
+for the observations.
+
+Summary: the M2 boots cleanly with SEP enabled, m1n1's handoff is complete,
+`apple_sep` binds and sends its TZ0 boot request, and the SEP never answers.
+The SEP mailbox shows zero interrupts in both directions for the life of the
+boot, so there is no acknowledgement, no firmware load, and no endpoint
+inventory to compare with J313. The stub has no timeout and logs nothing in
+this case, which is why the probe now reports the mailbox interrupt counters.
+
+Ruled out: the SEP power domain (`ps_sep` is `apple,always-on` on both
+`t8103-pmgr.dtsi` and `t8112-pmgr.dtsi`, and neither SoC's SEP node references
+it), the mailbox driver (the same `apple,asc-mailbox-v4` driver serves DCP and
+NVMe on this SoC), the device-tree handoff (memory-region, both manifests, and
+the reserved region were all present), and the display regression seen on the
+J313 test kernel (`apple-dcp` stayed bound because the source tag and config
+match the running kernel).
+
+Inference: the M1 boot sequence the stub implements, a TZ0 request on the boot
+endpoint answered by two acknowledgements before the IMG4 load, is not what
+sepOS on t8112 expects from a third-party OS, or is a step iBoot already
+completed there. Deciding which needs an m1n1 hypervisor trace of macOS's SEP
+boot on J493 (Phase 2), not more Linux-side guessing.
+
 ## Open questions this data raises
 
-- Does SEP firmware boot (TZ0 acknowledgements, IMG4 load) on t8112 under
-  the stub driver, and does it advertise the same seven services as J313?
+- Why does sepOS on t8112 ignore the TZ0 boot request that J313 answers?
+  Which messages does macOS exchange with SEP on J493 before the endpoint
+  advertisements appear?
 - Does booting SEP change microphone behavior on J493, which would explain
   whether Asahi has a reason to enable it on M2 laptops upstream?
 - Which controller carries the Mesa sensor on J493, and what are its clocks,

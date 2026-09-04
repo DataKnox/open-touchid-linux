@@ -17,8 +17,12 @@ reproducible test and a review of the new attack surface.
   t8112 (disabled node, no `sep` alias, so m1n1 passes no firmware region).
 - [x] Prepare an RFC device-tree patch that adds the alias and enables SEP on
   J493 for a separately named test kernel.
-- [ ] Boot the J493 test kernel with patches 0001 and 0002 and record whether
-  SEP firmware boots on t8112 and which endpoints it advertises.
+- [x] Boot the J493 test kernel with patches 0001 and 0002 and record whether
+  SEP firmware boots on t8112 and which endpoints it advertises. Result: the
+  M2 boots cleanly, `apple_sep` binds, and the SEP never answers the TZ0 boot
+  request (zero mailbox interrupts), so no endpoints were advertised.
+- [ ] Trace macOS's SEP boot on a t8112 machine with the m1n1 hypervisor and
+  compare the message sequence with the stub's TZ0 / IMG4 flow.
 - [ ] Compare endpoint inventories across M1, M2, and M3 devices.
 
 Exit criterion: endpoint metadata can be collected without dumping shared
